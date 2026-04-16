@@ -158,8 +158,12 @@
       const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
       return `${h}h ${m}m ${s}s`;
     }
+    // Set a 6-hour cooldown from now
+    function setSixHourCooldown() {
+      save(Date.now() + 6 * 60 * 60 * 1000);
+    }
     load();
-    return { isInCooldown, getRemainingSeconds, formatCooldown, save, load };
+    return { isInCooldown, getRemainingSeconds, formatCooldown, save, setSixHourCooldown };
   })();
 
   // ---------- MODULE 2: TIMER MANAGER (session countdown) ---------- ~40 lines
@@ -185,8 +189,7 @@
     }
     function stop() { if (interval) { clearInterval(interval); interval = null; } }
     function getTimeLeft() { return timeLeft; }
-    function setTimeLeft(val) { timeLeft = val; }
-    return { start, stop, getTimeLeft, setTimeLeft };
+    return { start, stop, getTimeLeft };
   })();
 
   // ---------- MODULE 3: GAME STATE & COMPONENT SPAWN ---------- ~70 lines
@@ -271,13 +274,13 @@
       get gameActive() { return gameActive; },
       reset, startSession, endSession, spawn, updatePhysics, sliceAt, shouldSpawn,
       setLastSpawn: (t) => { lastSpawn = t; },
-      TYPES, CW, CH, RADIUS, GRAVITY
+      CW, CH, RADIUS
     };
   })();
 
   // ---------- MODULE 4: RENDERER (drawing) ---------- ~140 lines
   const Renderer = (() => {
-    const { CW, CH, RADIUS, TYPES } = GameState;
+    const { CW, CH } = GameState;
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     
@@ -323,15 +326,16 @@
       ctx.shadowBlur=0; ctx.shadowColor='transparent';
     }
     
-    function drawOverlay(sessionActive, cooldownActive, cooldownText) {
+    function drawOverlay(sessionActive) {
       if (sessionActive) return;
       ctx.fillStyle='#000000b0'; ctx.fillRect(0,0,CW,CH);
       ctx.shadowColor='#00aaff'; ctx.shadowBlur=30; ctx.fillStyle='#0e1a26f0'; ctx.strokeStyle='#3e9bd6'; ctx.lineWidth=4;
       ctx.beginPath(); roundRect(CW/2-170, CH/2-70, 340, 140, 30); ctx.fill(); ctx.stroke();
       ctx.font='bold 28px "Segoe UI", monospace'; ctx.fillStyle='#fff'; ctx.shadowColor='#00aaff'; ctx.textAlign='center';
-      if (cooldownActive) {
+      const inCooldown = StorageManager.isInCooldown();
+      if (inCooldown) {
         ctx.fillText('⌛ COOLDOWN ⌛', CW/2, CH/2-15);
-        ctx.font='bold 22px monospace'; ctx.fillText(cooldownText, CW/2, CH/2+25);
+        ctx.font='bold 22px monospace'; ctx.fillText(StorageManager.formatCooldown(StorageManager.getRemainingSeconds()), CW/2, CH/2+25);
       } else {
         ctx.fillText('⚡ READY ⚡', CW/2, CH/2-15);
         ctx.font='bold 20px monospace'; ctx.fillText('Press START to slice!', CW/2, CH/2+25);
@@ -358,9 +362,7 @@
       drawBackground();
       components.forEach(drawComponent);
       drawSliceIndicator(slicingActive && gameActive);
-      const cooldownActive = StorageManager.isInCooldown();
-      const cooldownText = StorageManager.formatCooldown(StorageManager.getRemainingSeconds());
-      drawOverlay(sessionActive, cooldownActive, cooldownText);
+      drawOverlay(sessionActive);
       if (gameActive && components.length===0) {
         ctx.font='bold 18px "Courier New", monospace'; ctx.fillStyle='#b0daff'; ctx.shadowColor='#0088ff'; ctx.shadowBlur=14;
         ctx.textAlign='center'; ctx.fillText('⟳  DRAG TO SLICE  ⟳', CW/2, CH/2+30); ctx.shadowBlur=0;
@@ -455,38 +457,39 @@
     return { updateScore, updateTimer, updateButton, onButtonClick };
   })();
 
-  // ---------- MODULE 7: GAME LOOP & BOOTSTRAP ---------- ~70 lines
+  // ---------- MODULE 7: GAME LOOP & BOOTSTRAP ---------- ~80 lines
   (function main() {
-    // Bind input
     InputHandler.bind();
     
-    // UI references
     UIController.updateScore(0);
     UIController.updateTimer(60);
     UIController.updateButton(false);
     
-    // Spawn preview components (decorative)
+    // Decorative preview components
     for (let i=0; i<3; i++) GameState.spawn();
     
-    // Timer callbacks
+    function handleSessionEnd(setCooldown = true) {
+      GameState.endSession();
+      TimerManager.stop();
+      if (setCooldown) {
+        StorageManager.setSixHourCooldown();
+      }
+      UIController.updateButton(false);
+    }
+    
     function onTimerTick(sec) {
       UIController.updateTimer(sec);
     }
+    
     function onTimerFinish() {
-      // Session ended by timeout → set cooldown
-      GameState.endSession();
-      StorageManager.save(Date.now() + 6*60*60*1000);
-      UIController.updateButton(false);
-      TimerManager.stop();
+      // Time's up – set cooldown
+      handleSessionEnd(true);
     }
     
-    // Button logic
     UIController.onButtonClick(() => {
       if (GameState.sessionActive) {
-        // BACK: return to menu without cooldown
-        GameState.endSession();
-        TimerManager.stop();
-        UIController.updateButton(false);
+        // BACK button: end session AND trigger 6-hour cooldown
+        handleSessionEnd(true);
       } else {
         if (!StorageManager.isInCooldown()) {
           GameState.startSession();
@@ -498,7 +501,6 @@
       }
     });
     
-    // Game loop
     function loop(now) {
       if (GameState.gameActive) {
         if (GameState.shouldSpawn(now)) GameState.spawn();
