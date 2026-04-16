@@ -158,7 +158,6 @@
       const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
       return `${h}h ${m}m ${s}s`;
     }
-    // Set a 6-hour cooldown from now
     function setSixHourCooldown() {
       save(Date.now() + 6 * 60 * 60 * 1000);
     }
@@ -457,6 +456,17 @@
     return { updateScore, updateTimer, updateButton, onButtonClick };
   })();
 
+  // ---------- TELEGRAM SCORE SUBMISSION ----------
+  function submitScoreToTelegram(score) {
+    if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.sendData === 'function') {
+      const data = JSON.stringify({ score: score });
+      window.Telegram.WebApp.sendData(data);
+      console.log('Score sent to bot:', data);
+    } else {
+      console.warn('Telegram WebApp not available – score not sent.');
+    }
+  }
+
   // ---------- MODULE 7: GAME LOOP & BOOTSTRAP ---------- ~80 lines
   (function main() {
     InputHandler.bind();
@@ -482,13 +492,15 @@
     }
     
     function onTimerFinish() {
-      // Time's up – set cooldown
-      handleSessionEnd(true);
+      // Time's up – capture final score, end session, and send to Telegram
+      const finalScore = GameState.score;
+      handleSessionEnd(true);               // sets cooldown
+      submitScoreToTelegram(finalScore);    // send to bot
     }
     
     UIController.onButtonClick(() => {
       if (GameState.sessionActive) {
-        // BACK button: end session AND trigger 6-hour cooldown
+        // BACK button: end session AND trigger 6-hour cooldown (without sending score)
         handleSessionEnd(true);
       } else {
         if (!StorageManager.isInCooldown()) {
