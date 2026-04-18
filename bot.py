@@ -3,7 +3,6 @@ import json
 from datetime import datetime, timedelta
 from typing import Optional
 
-from dotenv import load_dotenv
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
@@ -18,7 +17,7 @@ from aiogram.enums import ParseMode
 
 from motor.motor_asyncio import AsyncIOMotorClient
 
-load_dotenv()
+
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 MONGO_URL = os.getenv("MONGO_URL")
 
