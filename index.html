@@ -3,14 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>⚡ NNJA · Hardware Ninja ⚡</title>
+  <title>⚡ Ninja KumBI · Glossy Arena ⚡</title>
   <!-- Tailwind + Font Awesome -->
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <style>
-    /* custom glass & gold accents */
+    /* custom 3D glossy effects */
     body {
-      background: radial-gradient(circle at 20% 20%, #1a2a1f, #0b0f0a);
+      background: #0a1a2f; /* deep blue base */
+      background-image: 
+        linear-gradient(rgba(0, 20, 40, 0.4) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 20, 40, 0.4) 1px, transparent 1px);
+      background-size: 30px 30px;
       font-family: 'Segoe UI', 'Inter', system-ui, sans-serif;
       min-height: 100vh;
       display: flex;
@@ -18,207 +22,229 @@
       justify-content: center;
       padding: 8px;
     }
-    .glass-card {
-      background: rgba(20, 30, 20, 0.5);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 215, 0, 0.2);
-      box-shadow: 0 8px 20px rgba(0,0,0,0.6), 0 0 0 1px rgba(255, 215, 0, 0.1) inset;
+    /* chunky 3D buttons */
+    .btn-3d {
+      border-radius: 16px;
+      background: linear-gradient(145deg, #3a5f7a, #1e3a5a);
+      box-shadow: 0 8px 0 #0f1e2c, 0 4px 12px rgba(0,0,0,0.5), inset 0 2px 4px rgba(255,255,255,0.3);
+      border: 1px solid #6b9bc0;
+      color: white;
+      font-weight: bold;
+      transition: all 0.08s;
     }
-    .gold-text {
-      background: linear-gradient(135deg, #f9e076, #e4b300);
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
+    .btn-3d:active {
+      transform: translateY(6px);
+      box-shadow: 0 2px 0 #0f1e2c, 0 4px 8px rgba(0,0,0,0.5), inset 0 1px 3px rgba(255,255,255,0.3);
     }
-    .btn-gold {
-      background: linear-gradient(145deg, #e4b300, #b58d00);
-      border: none;
-      box-shadow: 0 6px 0 #7a5c00, 0 0 15px #ffd966;
+    .btn-gold-3d {
+      background: linear-gradient(145deg, #fdd835, #f9a825);
+      box-shadow: 0 10px 0 #b26a00, 0 6px 18px rgba(255,215,0,0.5), inset 0 2px 6px #fff9c4;
+      border: 1px solid #ffe082;
+      color: #1a1a1a;
     }
-    .btn-gold:active {
-      transform: translateY(3px);
-      box-shadow: 0 3px 0 #7a5c00, 0 0 20px #ffd966;
+    .btn-gold-3d:active {
+      transform: translateY(6px);
+      box-shadow: 0 4px 0 #b26a00, 0 6px 12px rgba(255,215,0,0.6), inset 0 1px 4px #fff9c4;
     }
-    .nav-circle {
-      background: rgba(0, 0, 0, 0.4);
+    .glossy-card {
+      background: linear-gradient(145deg, rgba(30,60,90,0.7), rgba(15,35,55,0.9));
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
-      border: 1.5px solid rgba(228, 179, 0, 0.6);
-      box-shadow: 0 0 15px rgba(0,0,0,0.7);
-      transition: all 0.15s;
+      border: 1.5px solid rgba(255,215,0,0.4);
+      box-shadow: inset 0 0 10px rgba(255,255,240,0.3), 0 8px 0 #0f1a24;
     }
-    .nav-circle:active {
-      transform: scale(0.92);
-      border-color: #f9e076;
+    .resource-badge {
+      background: #0b1b2a;
+      border-radius: 30px;
+      padding: 4px 12px;
+      box-shadow: inset 0 -2px 0 #3a6d8c, 0 4px 0 #0a121c;
+      border-bottom: 2px solid #ffd966;
     }
-    /* Floating animation for ninja */
-    @keyframes float {
-      0% { transform: translateY(0px); }
-      50% { transform: translateY(-6px); }
-      100% { transform: translateY(0px); }
+    /* ninja platform */
+    .ninja-platform {
+      background: radial-gradient(circle at 30% 20%, #ffb347, #cc7a00);
+      border-radius: 40px 40px 20px 20px;
+      box-shadow: 0 12px 0 #7a3e00, 0 0 30px #ffaa33;
+      border: 2px solid #ffd58c;
     }
-    .animate-float {
-      animation: float 3s ease-in-out infinite;
+    .nav-icon-circle {
+      background: #1a3349;
+      border-radius: 30px;
+      box-shadow: 0 8px 0 #0d1b26, inset 0 1px 4px #9fc5e8;
+      border: 1.5px solid #7aa9c9;
+    }
+    .bottom-nav-item.active {
+      border-top: 4px solid #fbc02d;
+      background: linear-gradient(145deg, #1f3a50, #142b3c);
     }
   </style>
 </head>
 <body class="text-white">
 
-<!-- Unified container -->
-<div class="w-full max-w-[420px] mx-auto glass-card rounded-3xl p-4 shadow-2xl relative overflow-hidden">
+<!-- main app container — glossy, 3D feel -->
+<div class="w-full max-w-[420px] mx-auto gloss-card rounded-3xl p-3 shadow-2xl relative overflow-hidden" style="background: rgba(12, 30, 48, 0.6); backdrop-filter: blur(8px); border: 2px solid #3e6990; box-shadow: 0 12px 0 #0b1722, inset 0 0 30px #1e4f73;">
 
-  <!-- ==================== TOP BAR (Clash Royale style) ==================== -->
-  <div class="flex items-center justify-between mb-2">
-    <!-- Profile & Level -->
-    <div class="flex items-center gap-2 bg-black/30 backdrop-blur-sm px-3 py-1.5 rounded-full border border-amber-500/40">
-      <div class="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-yellow-600 flex items-center justify-center border-2 border-amber-300/60">
-        <i class="fas fa-user-ninja text-lg text-white"></i>
+  <!-- ===== TOP STATUS BAR (left: level progress, right: resources) ===== -->
+  <div class="flex items-center justify-between mb-2 px-1">
+    <!-- left: star/shield + progress -->
+    <div class="flex items-center gap-2 bg-[#0e1e2e] px-3 py-1.5 rounded-full border-2 border-blue-400/60 shadow-[0_5px_0_#09131c]">
+      <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center shadow-inner">
+        <i class="fas fa-shield-hal text-white text-lg"></i>
       </div>
-      <div>
-        <p class="text-xs font-bold gold-text">Caesar</p>
-        <p class="text-[10px] text-amber-200/80">Lvl. 42</p>
+      <div class="w-20 h-3 bg-gray-800 rounded-full overflow-hidden border border-blue-300">
+        <div class="h-full w-3/5 bg-gradient-to-r from-cyan-400 to-blue-500"></div>
       </div>
+      <span class="text-xs font-bold text-cyan-200">LV 24</span>
     </div>
 
-    <!-- Score & Upgrade Lap -->
-    <div class="flex items-center gap-1">
-      <div class="bg-black/30 backdrop-blur-sm px-3 py-1.5 rounded-full border border-blue-400/40 flex items-center gap-1">
-        <i class="fas fa-star text-blue-300 text-xs"></i>
-        <span class="text-sm font-bold text-blue-200">15.4k</span>
+    <!-- right: three resource counters -->
+    <div class="flex items-center gap-2">
+      <div class="resource-badge flex items-center gap-1">
+        <i class="fas fa-leaf text-green-400 text-xs"></i>
+        <span class="text-xs font-bold text-green-300">2.4k</span>
+        <button class="w-5 h-5 rounded-full bg-green-700/60 text-green-200 text-[10px] font-black shadow-[0_3px_0_#0f3a0f] active:translate-y-[2px]">+</button>
       </div>
-      <div class="bg-black/30 backdrop-blur-sm px-3 py-1.5 rounded-full border border-purple-400/40 flex items-center gap-1">
-        <i class="fas fa-microchip text-purple-300 text-xs"></i>
-        <span class="text-sm font-bold text-purple-200">Lap 3</span>
+      <div class="resource-badge flex items-center gap-1">
+        <i class="fas fa-coins text-yellow-400 text-xs"></i>
+        <span class="text-xs font-bold text-yellow-200">8.1k</span>
+        <button class="w-5 h-5 rounded-full bg-yellow-700/60 text-yellow-200 text-[10px] font-black shadow-[0_3px_0_#6b4f00] active:translate-y-[2px]">+</button>
       </div>
-    </div>
-
-    <!-- Wallet -->
-    <div class="bg-black/30 backdrop-blur-sm px-3 py-1.5 rounded-full border border-amber-500/40 flex items-center gap-1">
-      <i class="fas fa-wallet text-amber-300 text-xs"></i>
-      <span class="text-sm font-bold gold-text">TON</span>
+      <div class="resource-badge flex items-center gap-1">
+        <i class="fas fa-gem text-emerald-300 text-xs"></i>
+        <span class="text-xs font-bold text-emerald-200">450</span>
+        <button class="w-5 h-5 rounded-full bg-emerald-700/60 text-emerald-200 text-[10px] font-black shadow-[0_3px_0_#0a3a2a] active:translate-y-[2px]">+</button>
+      </div>
     </div>
   </div>
 
-  <!-- ==================== CENTRAL NINJA CHARACTER ==================== -->
-  <div class="relative flex flex-col items-center justify-center my-4">
-    <!-- Circular background aura -->
-    <div class="absolute w-48 h-48 rounded-full bg-amber-500/10 blur-3xl"></div>
+  <!-- ===== HEADER BANNER (gold/purple frame, special feature) ===== -->
+  <div class="w-full h-14 rounded-2xl mb-3 flex items-center px-4 justify-between"
+       style="background: linear-gradient(145deg, #9c6ade, #4b2c8a); box-shadow: 0 6px 0 #2c1a4e, inset 0 0 10px #dbb2ff; border: 2px solid #f6e05e;">
+    <div class="flex items-center gap-2">
+      <i class="fas fa-crown text-3xl text-yellow-300 drop-shadow-md"></i>
+      <span class="font-extrabold text-white text-sm tracking-wider">NINJA ELITE PASS</span>
+    </div>
+    <i class="fas fa-chevron-right text-white text-xl"></i>
+  </div>
+
+  <!-- ===== CENTER STAGE AREA (Ninja + platform) ===== -->
+  <div class="relative flex flex-col items-center justify-center my-1">
+    <!-- orange circular glow behind ninja -->
+    <div class="absolute w-52 h-52 rounded-full bg-orange-500/30 blur-3xl"></div>
     
-    <!-- Ninja Image (Replace with your actual asset) -->
-    <div class="relative z-10 animate-float">
-      <div class="w-40 h-40 rounded-full bg-gradient-to-b from-amber-900/40 to-yellow-900/20 border-4 border-amber-400/50 shadow-[0_0_40px_rgba(228,179,0,0.3)] flex items-center justify-center">
-        <i class="fas fa-user-ninja text-8xl gold-text drop-shadow-2xl"></i>
+    <!-- floating icons (tech hardware hints) -->
+    <div class="absolute left-2 top-10 text-2xl opacity-40 rotate-12"><i class="fas fa-microchip text-cyan-300"></i></div>
+    <div class="absolute right-2 top-12 text-2xl opacity-40 -rotate-12"><i class="fas fa-memory text-purple-300"></i></div>
+    
+    <!-- NINJA CHARACTER (use your own image here) -->
+    <div class="relative z-10 w-40 h-44 flex items-center justify-center">
+      <!-- Replace with your actual ninja image: <img src="ninja.png" class="object-contain w-full h-full drop-shadow-2xl" /> -->
+      <div class="w-36 h-36 rounded-full bg-gradient-to-b from-orange-400 to-amber-700 border-4 border-yellow-400 shadow-[0_0_50px_orange] flex items-center justify-center">
+        <i class="fas fa-user-ninja text-8xl text-gray-900 drop-shadow-xl"></i>
       </div>
+      <p class="absolute -bottom-2 text-[10px] bg-black/60 px-2 rounded-full">👤 NINJA KUMBI</p>
     </div>
 
-    <!-- Circular Navigation Tabs (Left & Right) -->
-    <!-- Left side circles -->
-    <div class="absolute left-0 top-1/2 -translate-y-1/2 flex flex-col gap-3 z-20">
-      <div class="nav-circle w-14 h-14 rounded-full flex items-center justify-center cursor-pointer" onclick="alert('Mine Tab')">
-        <i class="fas fa-pickaxe text-2xl text-amber-300"></i>
-      </div>
-      <div class="nav-circle w-14 h-14 rounded-full flex items-center justify-center cursor-pointer" onclick="alert('Tasks Tab')">
-        <i class="fas fa-tasks text-2xl text-blue-300"></i>
-      </div>
-    </div>
-
-    <!-- Right side circles -->
-    <div class="absolute right-0 top-1/2 -translate-y-1/2 flex flex-col gap-3 z-20">
-      <div class="nav-circle w-14 h-14 rounded-full flex items-center justify-center cursor-pointer" onclick="alert('Friends Tab')">
-        <i class="fas fa-users text-2xl text-green-300"></i>
-      </div>
-      <div class="nav-circle w-14 h-14 rounded-full flex items-center justify-center cursor-pointer" onclick="alert('Airdrop Tab')">
-        <i class="fas fa-gift text-2xl text-purple-300"></i>
+    <!-- floating platform with progress bar -->
+    <div class="ninja-platform w-44 h-8 -mt-1 relative flex items-center justify-center">
+      <div class="w-36 h-2 bg-gray-800/80 rounded-full overflow-hidden border border-yellow-400/60">
+        <div class="h-full w-4/5 bg-gradient-to-r from-yellow-300 to-orange-400"></div>
       </div>
     </div>
   </div>
 
-  <!-- ==================== START GAME BUTTON ==================== -->
-  <div class="flex justify-center mb-4">
-    <button id="playSlicerBtn" class="btn-gold text-black font-bold py-4 px-10 rounded-full text-xl shadow-2xl flex items-center gap-3 transform transition active:scale-95">
-      <i class="fas fa-gamepad"></i> START GAME
-    </button>
-  </div>
-
-  <!-- ==================== BOTTOM DASHBOARD (Stats / Mine Cards) ==================== -->
-  <div class="mt-2 space-y-3">
-    <!-- Stats row -->
-    <div class="flex justify-around text-center text-xs">
-      <div class="glass-card rounded-xl px-4 py-2">
-        <p class="text-gray-400">Win Rate</p>
-        <p class="text-lg font-bold text-green-300">68%</p>
+  <!-- ===== FLOATING SIDE PANELS (left & right) ===== -->
+  <div class="relative -mt-2">
+    <!-- LEFT COLUMN (3 icons) -->
+    <div class="absolute left-1 top-0 flex flex-col gap-2 z-20">
+      <div class="nav-icon-circle w-12 h-12 flex items-center justify-center text-xl text-amber-200 border-2 border-amber-400">
+        <i class="fas fa-treasure-chest"></i>
       </div>
-      <div class="glass-card rounded-xl px-4 py-2">
-        <p class="text-gray-400">Best Score</p>
-        <p class="text-lg font-bold text-yellow-300">2.4k</p>
+      <div class="nav-icon-circle w-12 h-12 flex items-center justify-center text-xl text-blue-200 border-2 border-blue-400">
+        <i class="fas fa-store-alt"></i>
       </div>
-      <div class="glass-card rounded-xl px-4 py-2">
-        <p class="text-gray-400">Rank</p>
-        <p class="text-lg font-bold text-blue-300">#42</p>
+      <div class="nav-icon-circle w-12 h-12 flex items-center justify-center text-xl text-purple-200 border-2 border-purple-400">
+        <i class="fas fa-ticket-alt"></i>
       </div>
     </div>
 
-    <!-- Upgrade cards preview (Mine Tab content) -->
-    <div class="glass-card rounded-2xl p-3">
-      <h4 class="text-sm font-bold gold-text mb-2 flex items-center gap-1"><i class="fas fa-microchip"></i> Active Miners</h4>
-      <div class="flex gap-2 overflow-x-auto pb-1">
-        <div class="min-w-[100px] bg-black/30 rounded-xl p-2 border border-amber-500/30">
-          <i class="fas fa-microchip text-blue-300"></i>
-          <p class="text-xs font-bold">CPU Lvl 2</p>
-          <p class="text-[10px] text-gray-400">+150/hr</p>
-        </div>
-        <div class="min-w-[100px] bg-black/30 rounded-xl p-2 border border-amber-500/30">
-          <i class="fas fa-tv text-green-300"></i>
-          <p class="text-xs font-bold">GPU Lvl 1</p>
-          <p class="text-[10px] text-gray-400">+220/hr</p>
-        </div>
-        <div class="min-w-[100px] bg-black/30 rounded-xl p-2 border border-amber-500/30">
-          <i class="fas fa-memory text-purple-300"></i>
-          <p class="text-xs font-bold">RAM Lvl 3</p>
-          <p class="text-[10px] text-gray-400">+80/hr</p>
-        </div>
-      </div>
+    <!-- RIGHT COLUMN (2 badges) -->
+    <div class="absolute right-1 top-0 flex flex-col gap-2 z-20">
+      <div class="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-300 to-amber-600 border-3 border-white shadow-[0_5px_0_#b26a00] flex items-center justify-center text-gray-900 font-black text-sm">🔥</div>
+      <div class="w-12 h-12 rounded-full bg-gradient-to-br from-purple-400 to-pink-600 border-3 border-white shadow-[0_5px_0_#7b1fa2] flex items-center justify-center text-white font-black text-sm">⭐</div>
     </div>
   </div>
 
-  <!-- Hidden Game View (will be shown when START GAME is clicked) -->
-  <div id="gameView" class="hidden">
-    <!-- Game view content would go here, you can integrate your existing slicer game -->
+  <!-- ===== LOWER ACTION AREA ===== -->
+  <div class="mt-24 space-y-3">
+    <!-- two queue slots -->
+    <div class="flex justify-center gap-3">
+      <div class="w-14 h-14 rounded-xl bg-gray-900/80 border-2 border-blue-400/60 shadow-[inset_0_2px_6px_black] flex items-center justify-center">
+        <i class="fas fa-hourglass-half text-2xl text-blue-300"></i>
+      </div>
+      <div class="w-14 h-14 rounded-xl bg-gray-900/80 border-2 border-blue-400/60 shadow-[inset_0_2px_6px_black] flex items-center justify-center">
+        <i class="fas fa-clock text-2xl text-purple-300"></i>
+      </div>
+    </div>
+
+    <!-- THREE MAIN BUTTONS (left small, center HUGE, right small) -->
+    <div class="flex items-center justify-center gap-3 px-1">
+      <!-- left small blue square -->
+      <button class="btn-3d w-16 h-16 rounded-2xl flex flex-col items-center justify-center text-white">
+        <i class="fas fa-layer-group text-2xl"></i>
+        <span class="text-[9px] font-bold">CARDS</span>
+      </button>
+
+      <!-- MASSIVE GOLDEN MAIN ACTION -->
+      <button id="mainActionBtn" class="btn-gold-3d flex-1 h-20 rounded-3xl flex items-center justify-center gap-2 text-2xl font-black tracking-wider">
+        <i class="fas fa-bolt"></i> START <i class="fas fa-bolt"></i>
+      </button>
+
+      <!-- right small blue square -->
+      <button class="btn-3d w-16 h-16 rounded-2xl flex flex-col items-center justify-center text-white">
+        <i class="fas fa-trophy text-2xl"></i>
+        <span class="text-[9px] font-bold">RANK</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== BOTTOM NAVIGATION BAR ===== -->
+  <div class="mt-4 flex justify-around items-center bg-gray-900/90 py-2 px-1 rounded-3xl border-t-4 border-amber-500 shadow-[0_-4px_0_#1a1f2a]">
+    <div class="flex flex-col items-center text-blue-300 text-sm"><i class="fas fa-box"></i><span class="text-[10px]">Items</span></div>
+    <div class="flex flex-col items-center text-blue-300 text-sm"><i class="fas fa-th-large"></i><span class="text-[10px]">Types</span></div>
+    <div class="flex flex-col items-center -mt-5">
+      <div class="w-14 h-14 rounded-full bg-gradient-to-b from-yellow-400 to-amber-600 border-4 border-gray-800 shadow-[0_6px_0_#7a4b00] flex items-center justify-center text-2xl text-black">
+        <i class="fas fa-gamepad"></i>
+      </div>
+      <span class="text-[10px] font-bold text-yellow-300">PLAY</span>
+    </div>
+    <div class="flex flex-col items-center text-blue-300 text-sm"><i class="fas fa-users"></i><span class="text-[10px]">Clan</span></div>
+    <div class="flex flex-col items-center text-blue-300 text-sm"><i class="fas fa-cog"></i><span class="text-[10px]">Settings</span></div>
   </div>
 </div>
 
 <script>
   (function(){
-    // Telegram Mini App integration
+    // Telegram WebApp integration
     if (window.Telegram?.WebApp) {
       window.Telegram.WebApp.ready();
       window.Telegram.WebApp.expand();
     }
 
-    // Placeholder for your existing game logic
-    document.getElementById('playSlicerBtn').addEventListener('click', () => {
-      // You can replace this with your actual game launch logic
-      // For example, switching views or opening the game iframe
-      alert('🚀 Launching Hardware Ninja Slicer! (Integrate your game view here)');
-      
-      // Example: if you want to hide dashboard and show game canvas
-      // document.getElementById('dashboardView').classList.add('hidden');
-      // document.getElementById('gameView').classList.remove('hidden');
+    // Main action button (you can connect to your game launcher)
+    document.getElementById('mainActionBtn').addEventListener('click', () => {
+      // Replace with your actual game start logic
+      alert('⚡ Launching Ninja Slicer Arena! (Integrate your game here)');
     });
 
-    // Update Telegram user info if available
-    if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
-      const user = window.Telegram.WebApp.initDataUnsafe.user;
-      const usernameEl = document.querySelector('.gold-text');
-      if (usernameEl) usernameEl.textContent = user.first_name || 'Caesar';
-    }
+    // Example: Update level progress or resources dynamically later
   })();
 </script>
 
-<!-- Add a subtle style for the hidden view -->
+<!-- tiny additional fix for border-3 -->
 <style>
-  .hidden { display: none !important; }
+  .border-3 { border-width: 3px; }
+  .gloss-card { border-radius: 28px; }
 </style>
 </body>
 </html>
