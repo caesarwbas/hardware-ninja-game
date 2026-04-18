@@ -1,252 +1,175 @@
 import os
-import asyncio
+import json
 from datetime import datetime, timedelta
-from typing import Dict, Optional
+from typing import Optional
 
 from dotenv import load_dotenv
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import JSONResponse
+from contextlib import asynccontextmanager
+import uvicorn
+
 from aiogram import Bot, Dispatcher, Router, types
 from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
+
 from motor.motor_asyncio import AsyncIOMotorClient
 
-from pytonconnect import TonConnect
-from pytonconnect.storage import IStorage
-from pytonconnect.exceptions import TonConnectError
-
-# ---------- Load .env ----------
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 MONGO_URL = os.getenv("MONGO_URL")
 
 if not BOT_TOKEN or not MONGO_URL:
-    raise ValueError("Missing BOT_TOKEN or MONGO_URL")
+    raise ValueError("请在 .env 文件中设置 BOT_TOKEN 和 MONGO_URL")
 
-# ---------- MongoDB ----------
 client = AsyncIOMotorClient(MONGO_URL)
-db = client["pc_slicer_bot"]
+db = client["ninjakumbi"]
 users_collection = db["users"]
 
-# ---------- Constants ----------
 MINI_APP_URL = "https://caesarwbas.github.io/hardware-ninja-game/"
-MANIFEST_URL = "https://caesarwbas.github.io/hardware-ninja-game/tonconnect-manifest.json"
 COOLDOWN_HOURS = 6
 
-# ---------- PyTonConnect storage adapter using MongoDB ----------
-class MongoTonStorage(IStorage):
-    """Persist TON Connect sessions in MongoDB."""
-    def __init__(self, user_id: int):
-        self.user_id = user_id
-        self.collection = db["tonconnect_sessions"]
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+    dp = Dispatcher()
+    router = Router()
 
-    async def set(self, key: str, value: str):
-        await self.collection.update_one(
-            {"user_id": self.user_id, "key": key},
-            {"$set": {"value": value}},
-            upsert=True
-        )
+    async def get_user(user_id: int):
+        return await users_collection.find_one({"user_id": user_id})
 
-    async def get(self, key: str) -> Optional[str]:
-        doc = await self.collection.find_one({"user_id": self.user_id, "key": key})
-        return doc["value"] if doc else None
-
-    async def remove(self, key: str):
-        await self.collection.delete_one({"user_id": self.user_id, "key": key})
-
-    async def get_all(self) -> Dict[str, str]:
-        cursor = self.collection.find({"user_id": self.user_id})
-        return {doc["key"]: doc["value"] async for doc in cursor}
-
-# ---------- Bot setup ----------
-bot = Bot(token=BOT_TOKEN)
-router = Router()
-
-# ---------- Helper: get or create user ----------
-async def get_or_create_user(user_id: int) -> dict:
-    user = await users_collection.find_one({"user_id": user_id})
-    if not user:
+    async def create_user(user_id: int):
         user = {
             "user_id": user_id,
-            "points": 0,
+            "balance": 0,
             "last_play": None,
-            "wallet_address": None
+            "last_claim": datetime.utcnow(),
+            "upgrades": {"cpu": 1, "gpu": 1, "rig": 1}
         }
         await users_collection.insert_one(user)
+        return user
+
+    @router.message(Command("start"))
+    async def start_handler(message: types.Message):
+        user_id = message.from_user.id
+        user = await get_user(user_id)
+        if not user:
+            user = await create_user(user_id)
+
+        builder = InlineKeyboardBuilder()
+        builder.row(InlineKeyboardButton(text="🎮 开始游戏", web_app=WebAppInfo(url=MINI_APP_URL)))
+        await message.answer(
+            f"⚡ <b>Ninja KumBI</b> ⚡\n\n"
+            f"欢迎，{message.from_user.first_name}！\n"
+            f"当前余额: <b>{user['balance']}</b> NNJA\n\n"
+            f"每 6 小时可玩一次切片游戏，采矿可离线累积收益。",
+            reply_markup=builder.as_markup()
+        )
+
+    dp.include_router(router)
+    app.state.bot = bot
+    import asyncio
+    asyncio.create_task(dp.start_polling(bot))
+    yield
+    await dp.stop_polling()
+    await bot.session.close()
+
+app = FastAPI(lifespan=lifespan)
+
+# ---------- 辅助函数 ----------
+base_profits = {"cpu": 10, "gpu": 25, "rig": 50}
+base_costs = {"cpu": 50, "gpu": 120, "rig": 300}
+
+def calc_profit_per_hour(upgrades: dict) -> int:
+    return upgrades["cpu"] * base_profits["cpu"] + upgrades["gpu"] * base_profits["gpu"] + upgrades["rig"] * base_profits["rig"]
+
+def calc_upgrade_cost(card: str, current_level: int) -> int:
+    return int(base_costs[card] * (1.5 ** (current_level - 1)))
+
+# ---------- API 端点 ----------
+@app.get("/api/user/{user_id}")
+async def get_user_data(user_id: int):
+    user = await users_collection.find_one({"user_id": user_id})
+    if not user:
+        user = {"user_id": user_id, "balance": 0, "last_claim": datetime.utcnow(), "upgrades": {"cpu":1,"gpu":1,"rig":1}}
+        await users_collection.insert_one(user)
+    user["_id"] = str(user["_id"])
     return user
 
-# ---------- /start command ----------
-@router.message(Command("start"))
-async def start_handler(message: types.Message):
-    user = await get_or_create_user(message.from_user.id)
-
-    builder = InlineKeyboardBuilder()
-    builder.row(
-        InlineKeyboardButton(
-            text="🎮 PLAY NOW",
-            web_app=WebAppInfo(url=MINI_APP_URL)
-        )
-    )
-    builder.row(
-        InlineKeyboardButton(
-            text="🔗 Link TON Wallet",
-            callback_data="link_wallet"
-        )
-    )
-
-    wallet_line = ""
-    if user.get("wallet_address"):
-        short_addr = user["wallet_address"][:6] + "..." + user["wallet_address"][-4:]
-        wallet_line = f"\n💼 Wallet: `{short_addr}`"
-
-    await message.answer(
-        "⚡ *PC Component Slicer* ⚡\n\n"
-        "Slice PC parts, earn points!\n"
-        f"Points: *{user['points']}*{wallet_line}",
-        parse_mode="Markdown",
-        reply_markup=builder.as_markup()
-    )
-
-# ---------- Link wallet callback ----------
-@router.callback_query(lambda c: c.data == "link_wallet")
-async def link_wallet_callback(callback: types.CallbackQuery):
-    user_id = callback.from_user.id
-    user = await get_or_create_user(user_id)
-
-    # Create TON Connect instance with MongoDB storage
-    storage = MongoTonStorage(user_id)
-    connector = TonConnect(manifest_url=MANIFEST_URL, storage=storage)
-
-    # Generate universal link
-    wallets = await connector.get_wallets()
-    # Use Tonkeeper as default, or pick the first available
-    tonkeeper = next((w for w in wallets if w["app_name"] == "Tonkeeper"), wallets[0])
-    generated_url = await connector.connect(tonkeeper)
-
-    # Save the connector instance temporarily? Not needed; state is in storage.
-    # The user will be redirected; we'll handle the return via polling or a separate callback.
-    # For simplicity, we store the connector in a dict (or rely on storage).
-    # Here we'll store the user's intent to connect.
+@app.post("/api/upgrade")
+async def upgrade_card(request: Request):
+    data = await request.json()
+    user_id = data.get("user_id")
+    card = data.get("card")
+    cost = data.get("cost")
+    new_level = data.get("new_level")
+    if not all([user_id, card, cost, new_level]) or card not in base_costs:
+        raise HTTPException(400, "参数错误")
+    user = await users_collection.find_one({"user_id": user_id})
+    if not user:
+        raise HTTPException(404, "用户不存在")
+    if user["balance"] < cost:
+        return JSONResponse({"success": False, "message": "余额不足"}, status_code=400)
+    current_level = user["upgrades"].get(card, 1)
+    expected_cost = calc_upgrade_cost(card, current_level)
+    if cost != expected_cost or new_level != current_level + 1:
+        return JSONResponse({"success": False, "message": "升级数据不一致"}, status_code=400)
+    new_balance = user["balance"] - cost
+    user["upgrades"][card] = new_level
     await users_collection.update_one(
         {"user_id": user_id},
-        {"$set": {"awaiting_wallet_connection": True}}
+        {"$set": {"balance": new_balance, f"upgrades.{card}": new_level}}
     )
+    return {"success": True, "new_balance": new_balance, "new_level": new_level}
 
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🔐 Open Tonkeeper", url=generated_url)],
-        [InlineKeyboardButton(text="✅ I've Connected", callback_data="check_wallet")]
-    ])
-
-    await callback.message.edit_text(
-        "🔗 *Connect your TON Wallet*\n\n"
-        "1. Click the button below to open Tonkeeper.\n"
-        "2. Approve the connection in the wallet.\n"
-        "3. Return here and press *I've Connected*.",
-        parse_mode="Markdown",
-        reply_markup=keyboard
+@app.post("/api/claim")
+async def claim_rewards(request: Request):
+    data = await request.json()
+    user_id = data.get("user_id")
+    user = await users_collection.find_one({"user_id": user_id})
+    if not user:
+        raise HTTPException(404, "用户不存在")
+    now = datetime.utcnow()
+    last_claim = user.get("last_claim", now)
+    elapsed_hours = (now - last_claim).total_seconds() / 3600
+    profit_per_hour = calc_profit_per_hour(user["upgrades"])
+    earned = int(profit_per_hour * elapsed_hours)
+    new_balance = user["balance"] + earned
+    await users_collection.update_one(
+        {"user_id": user_id},
+        {"$set": {"balance": new_balance, "last_claim": now}}
     )
-    await callback.answer()
+    return {"success": True, "earned": earned, "new_balance": new_balance}
 
-# ---------- Check wallet connection ----------
-@router.callback_query(lambda c: c.data == "check_wallet")
-async def check_wallet_callback(callback: types.CallbackQuery):
-    user_id = callback.from_user.id
-    storage = MongoTonStorage(user_id)
-    connector = TonConnect(manifest_url=MANIFEST_URL, storage=storage)
-
-    try:
-        # Restore session
-        await connector.restore_connection()
-        if connector.connected and connector.wallet:
-            wallet_address = connector.wallet.account.address
-
-            # Save to user profile
-            await users_collection.update_one(
-                {"user_id": user_id},
-                {"$set": {"wallet_address": wallet_address}}
-            )
-
-            short_addr = wallet_address[:6] + "..." + wallet_address[-4:]
-            await callback.message.edit_text(
-                f"✅ Wallet connected!\n`{short_addr}`",
-                parse_mode="Markdown"
-            )
-        else:
-            await callback.message.edit_text(
-                "❌ Not connected yet. Please open the link and approve in Tonkeeper, then try again.",
-                reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                    [InlineKeyboardButton(text="🔄 Try Again", callback_data="link_wallet")]
-                ])
-            )
-    except TonConnectError as e:
-        await callback.message.edit_text(
-            f"⚠️ Error: {str(e)}\nPlease try linking again.",
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="🔗 Link Wallet", callback_data="link_wallet")]
-            ])
-        )
-    await callback.answer()
-
-# ---------- Optional: command to disconnect ----------
-@router.message(Command("disconnect"))
-async def disconnect_wallet(message: types.Message):
-    user_id = message.from_user.id
-    storage = MongoTonStorage(user_id)
-    connector = TonConnect(manifest_url=MANIFEST_URL, storage=storage)
-
-    try:
-        await connector.restore_connection()
-        if connector.connected:
-            await connector.disconnect()
-        await users_collection.update_one(
-            {"user_id": user_id},
-            {"$set": {"wallet_address": None}}
-        )
-        await message.answer("🔓 Wallet disconnected.")
-    except Exception as e:
-        await message.answer(f"Error: {e}")
-
-# ---------- WebAppData handler (score submission) – unchanged from previous implementation ----------
-@router.message(lambda msg: msg.web_app_data is not None)
-async def web_app_data_handler(message: types.Message):
-    import json
-    user_id = message.from_user.id
-    user = await get_or_create_user(user_id)
-
-    try:
-        data = json.loads(message.web_app_data.data)
-        score = int(data.get("score", 0))
-    except:
-        await message.answer("❌ Invalid data received from game.")
-        return
-
-    # Cooldown check (6 hours)
+@app.post("/api/update-balance")
+async def update_balance(request: Request):
+    data = await request.json()
+    user_id = data.get("user_id")
+    score = data.get("score")
+    if not user_id or score is None:
+        raise HTTPException(400, "缺少参数")
+    user = await users_collection.find_one({"user_id": user_id})
+    if not user:
+        user = {"user_id": user_id, "balance": 0, "last_play": None, "upgrades": {"cpu":1,"gpu":1,"rig":1}}
+        await users_collection.insert_one(user)
     if user.get("last_play"):
         elapsed = datetime.utcnow() - user["last_play"]
         if elapsed < timedelta(hours=COOLDOWN_HOURS):
-            remaining = timedelta(hours=COOLDOWN_HOURS) - elapsed
-            h = remaining.seconds // 3600
-            m = (remaining.seconds % 3600) // 60
-            s = remaining.seconds % 60
-            await message.answer(f"⏳ Cooldown: {h}h {m}m {s}s remaining.")
-            return
-
-    new_points = user["points"] + score
+            remaining = int((timedelta(hours=COOLDOWN_HOURS) - elapsed).total_seconds())
+            return JSONResponse({"success": False, "message": f"冷却中，还需 {remaining} 秒", "remaining_seconds": remaining}, status_code=403)
+    new_balance = user["balance"] + score
     await users_collection.update_one(
         {"user_id": user_id},
-        {"$set": {"points": new_points, "last_play": datetime.utcnow()}}
+        {"$set": {"balance": new_balance, "last_play": datetime.utcnow()}}
     )
+    return {"success": True, "new_balance": new_balance, "score_added": score}
 
-    await message.answer(
-        f"✅ Score +{score}!\nTotal: *{new_points}* points.",
-        parse_mode="Markdown"
-    )
-
-# ---------- Main ----------
-async def main():
-    dp = Dispatcher()
-    dp.include_router(router)
-    await bot.delete_webhook(drop_pending_updates=True)
-    await dp.start_polling(bot)
+@app.get("/")
+async def root():
+    return {"status": "ok"}
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    uvicorn.run("bot:app", host="0.0.0.0", port=8000, reload=True)
